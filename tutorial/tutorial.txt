@@ -1,0 +1,307 @@
+TUTORIALS
+The hybrid_db download contains a tutorials sub-folder with example code to follow along with in articles on this site.
+Navigate to the tutorials sub-folder in your command shell (bash, dos cmd.exe) and launch irb with the relevant tutorial file e.g.
+
+	irb -r tutorial1.rb
+
+
+Basic Usage
+-------------------------
+
+(listing tutorial1.rb)
+require 'lib/hybriddb'
+#Connect to the specified database and create the (minimal set of) tables required for operation if not present, database must exist
+HybridDB::Connection.set_adapter(MySQLAdapter.new({:host=> 'myserver', :user => 'username', :password => 'password', :database => 'hybriddb_dev' }))
+	
+#create a model by inheriting from HybridObject
+class BlogPost < HybridObject 
+	attr_accessor :title, :content, :viewable_range
+end
+
+Then fire up irb
+
+	paul:~/dev/HybridDB/tutorial$ irb -r tutorial1.rb
+	irb> BlogPost.find(:all)
+	=> []
+	irb> b = BlogPost.new
+	=> #<BlogPost:0xb79af8c8>
+	irb> b.title = "My First Post"
+	=> "My First Post"
+	irb> b.content = "Lorem ipsum doler sit amet adapissthere...."
+	=> "Lorem ipsum doler sit amet adapissthere...."
+	irb> b.viewable_range = Date.new(2008,1,1)..Date.new(2008,7,11)
+	=> #<Date: 4908933/2,0,2299161>..#<Date: 4909317/2,0,2299161>
+	irb> b.save
+	=> true
+	
+The save call saves the object to the database, no schema involved, you can see it in YAML format if you look in the hybrid_objects table in mysql
+	
+	irb> b
+	=> #<BlogPost:0xb79af8c8 @viewable_range=#<Date: 4908933/2,0,2299161>..#<Date: 4909317/2,0,2299161>, @hybrid_id="216", @hybrid_version=1, @hybrid_saved=true, @content="Lorem ipsum doler sit amet adapissthere....", @hybrid_size=169, @title="My First Post">
+	irb> b.hybrid_id
+	=> 216
+	irb> b.hybrid_version
+	=> 1
+	b.hybrid_size
+	=> 169
+	
+	
+You can see that we have added instance variables to the object containing the hybrid_id, hybrid_version and hybrid_size
+	
+	irb> BlogPost.find(:all)
+	=> [#<BlogPost:0xb7b8a990 @viewable_range=#<Date: 4908933/2,0,2299161>..#<Date: 4909317/2,0,2299161>, @hybrid_id=216, @hybrid_version=2, @hybrid_saved=true, @content="Lorem ipsum doler sit amet adapissthere....", @hybrid_size=169, @title="My First Post">]
+	irb> BlogPost.find(216)
+	=> #<BlogPost:0xb7b6c490 @viewable_range=#<Date: 4908933/2,0,2299161>..#<Date: 4909317/2,0,2299161>, @hybrid_id=216, @hybrid_version=2, @hybrid_saved=true, @content="Lorem ipsum doler sit amet adapissthere....", @hybrid_size=169, @title="My First Post">		
+	irb> BlogPost.find(:first)
+	=> #<BlogPost:0xb7b6c490 @viewable_range=#<Date: 4908933/2,0,2299161>..#<Date: 4909317/2,0,2299161>, @hybrid_id=216, @hybrid_version=2, @hybrid_saved=true, @content="Lorem ipsum doler sit amet adapissthere....", @hybrid_size=169, @title="My First Post">
+	irb> BlogPost.find(:first).content
+	=> "Lorem ipsum doler sit amet adapissthere...."
+	irb> BlogPost.find(:first).viewable_range
+	=> #<Date: 4908933/2,0,2299161>..#<Date: 4909317/2,0,2299161>
+	irb> b.delete
+	=> true
+	irb> BlogPost.find(:all)
+	=> []
+	irb>exit
+	
+	For basic usage see the <basic usage page>
+
+
+Hybrid Objects Contained within Hybrid Objects (....Man!)
+---------------------------------------------------------
+(listing tutorial2.rb)
+require '../lib/hybriddb'
+HybridDB::Connection.set_adapter(MySQLAdapter.new({:host=> 'myservername', :user => 'sqluser', :password => 'password', :database => 'hybriddb' }))
+
+#add 2 hybrid models
+class Parent < HybridObject 
+	attr_accessor :name, :age, :child
+end
+
+class Child < HybridObject 
+	attr_accessor :name, :age, :parent
+end
+
+This tutorial shows how we can have Hybrid objects as properties of other Hybrid objects, and that they can be found individually, without navigating an object graph.
+
+start irb and load the tutorial
+		paul:~/dev/HybridDB/tutorial$ irb -r tutorial2.rb
+		irb> p = Parent.new
+		=> #<Parent:0xb7aac208>
+		irb> p.name = "Pappy"
+		=> "Pappy"
+		irb> p.age = 30
+		=> 30
+		irb> c = Child.new
+		=> #<Child:0xb7aa6678>
+		irb> c.name = "Lil babee"
+		=> "Lil babee"
+		irb> c.age = 0.5
+		=> 0.5
+		
+We have a parent and a child, lets link them.
+
+		irb> p.child = c
+		=> #<Child:0xb7aa6678 @name="Lil babee", @age=0.5>
+		irb> c.parent = p
+		=> #<Parent:0xb7aac208 @child=#<Child:0xb7aa6678 @name="Lil babee", @age=0.5, @parent=#<Parent:0xb7aac208 ...>>, @name="Pappy", @age=30>
+		irb> p.save
+		=> true
+We have called save on the parent. This also saves any contained Hybrid objects. 
+
+		irb> p
+		=> #<Parent:0xb7aac208 @child=#<Child:0xb7aa6678 @name="Lil babee", @hybrid_id="764", @age=0.5, @hybrid_version=1, @hybrid_saved=true, @hybrid_size=119, @parent=#<Parent:0xb7aac208 ...>>, @name="Pappy", @hybrid_id="763", @age=30, @hybrid_version=1, @hybrid_saved=true, @hybrid_size=112>
+		irb> c
+		=> #<Child:0xb7aa6678 @name="Lil babee", @hybrid_id="764", @age=0.5, @hybrid_version=1, @hybrid_saved=true, @hybrid_size=119, @parent=#<Parent:0xb7aac208 @child=#<Child:0xb7aa6678 ...>, @name="Pappy", @hybrid_id="763", @age=30, @hybrid_version=1, @hybrid_saved=true, @hybrid_size=112>>
+		irb> p.child.hybrid_id
+		=> "764"
+		irb> p.hybrid_id
+		=> "763"
+Both objects have been saved, and have their hybrid chacteristics. Both can be loaded using the find class method. We'll clear the variables.
+
+		irb> p=nil
+		=> nil
+		irb> c=nil
+		=> nil
+Find the parent again by it's hybrid_id
+
+		irb> p=Parent.find(763)
+		=> #<Parent:0xb7a901e8 @child=#<Stub Child:764 *Unloaded*>, @name="Pappy", @hybrid_id=763, @age=30, @hybrid_version=2, @hybrid_saved=true, @hybrid_size=112>
+		irb> p.child
+		=> #<Stub Child:764 *Unloaded*>
+		
+The child shows up as an unloaded Child stub, confusing, but it acts just like a child and will load on any access. 
+
+Note: I made stub objects appear when inspecting to get around the problem of a recursive display of a parent with a child, whose parent was a child whose parent..... making irb meltdown
+
+Lets query it's properties.
+
+		irb> p.child.name
+		=> "Lil babee"
+		irb> p.child.parent.name
+		=> "Pappy"
+		irb> p=nil
+		=> nil
+		
+We can also load the child object and get to the parent from there.
+			
+		irb> c=Child.find(:first)
+		=> #<Child:0xb7a81634 @name="Lil babee", @hybrid_id=764, @age=0.5, @hybrid_version=2, @hybrid_saved=true, @hybrid_size=119, @parent=#<Stub Parent:763 *Unloaded*>>
+		irb> c.parent.name
+		=> "Pappy"
+		irb> c.parent
+		=> #<Stub Parent:763 *Loaded*>
+		
+Lets change the parents name through the child.
+
+		irb> c.parent.name = "Pappy O Daniels"
+		=> "Pappy O Daniels"
+		irb> c.parent.save
+		=> true
+		irb> p=Parent.find(:first)
+		=> #<Parent:0xb7a6f574 @child=#<Stub Child:764 *Unloaded*>, @name="Pappy O Daniels", @hybrid_id=764, @age=30, @hybrid_version=3, @hybrid_saved=true, @hybrid_size=121>
+		irb> p.name
+		=> "Pappy O Daniels"
+
+For an explanation of how hybrid objects are stored and linked to other objects see <The Concept>
+
+Indexing
+--------------------------------------------------------
+
+(listing tutorial3.rb)
+require '../lib/hybriddb'
+HybridDB::Connection.set_adapter(MySQLAdapter.new({:host=> 'myservername', :user => 'sqluser', :password => 'password', :database => 'hybriddb' }))
+
+#declare a model and index a property
+class User < HybridObject 
+	indexes :name
+	attr_accessor :name, :department, :is_admin
+end
+
+This tutorial demonstrates the indexing capabilities of HybridDB. The above model has an index built on it's name property, users will be able to be found by their name quickly using the database servers indexes.
+
+load the file in irb
+
+	paul:~/dev/HybridDB/tutorial$ irb -r tutorial3.rb
+	irb> u = User.new
+	=> #<User:0xb7a8d09c>
+	irb> u.name = "Larry Luser"
+	=> "Larry Luser"
+	irb> u.department = "Prestidigitation"
+	=> "Prestidigitation"
+	irb> u.is_admin = true
+	=> true
+	irb> u.save
+	=> true
+	irb> u=nil
+	=> nil
+	
+Lets find the user again, by their (indexed) name. This will use the DB servers indexing ability to find only matches we are interested in, no looping through objects.
+
+	irb> u = User.find(:first, :conditions => {:name => "Larry Luser"})
+	=> #<User:0xb7ae8910 @hybrid_id=765, @department="Prestidigitation", @hybrid_version=2, @hybrid_saved=true, @hybrid_size=76, @name="Larry Luser", @is_admin=true>
+	irb> u.name
+	=> "Larry Luser"
+	
+We can still find the object by it's hybrid_id
+
+	irb> u.hybrid_id
+	=> 765
+	irb> u = User.find(765)
+	=> #<User:0xb7ae3230 @hybrid_id=765, @department="Prestidigitation", @hybrid_version=2, @hybrid_saved=true, @hybrid_size=76, @name="Larry Luser", @is_admin=true>
+
+	
+Collections
+----------------
+(listing tutorial4.rb)
+require '../lib/hybriddb'
+HybridDB::Connection.set_adapter(MySQLAdapter.new({:host=> 'myservername', :user => 'sqluser', :password => 'password', :database => 'hybriddb' }))
+
+#declare some models
+class BlogPost < HybridObject 
+	indexes :title 
+	has_many :comments
+	attr_accessor :title, :content
+end
+
+class BlogComment < HybridObject
+	indexes :author
+	attr_accessor :author, :content
+end
+
+The has_many class method, adds an array-like property to a class, this property can have items (hybrid and non-hybrid) added to, and removed from it without saving the whole object graph.
+Links to objects are saved in the hybrid_relations table on the server
+
+load the file in irb
+
+	paul:~/dev/HybridDB/tutorial$ irb -r tutorial4.rb
+	irb> b=BlogPost.new
+	=> #<BlogPost:0xb7b36408>
+	irb> b.comments
+	=> nil
+	irb> b.title = "Post One"
+	=> "Post One"
+	irb> b.content = "Blah blah blah"
+	=> "Blah blah blah"
+	irb> b.save
+	=> true
+	irb> b.comments
+	=> #<HybridCollection:0xb7b2c764 @property=:comments, @owner_id="766", @owner_class="BlogPost">
+	
+We have saved the object, it's (indexed) collection is now accessable. Lets append comments to our post.
+
+	irb> comment1 = BlogComment.new
+	=> #<BlogComment:0xb7b2a52c>
+	irb> comment1.author="Playa1"
+	=> "Playa1"
+	irb> comment1.content = "First Post!"
+	=> "First Post!"
+	irb> b.comments << comment1
+	=> [#<BlogComment:0xb7b2a52c @hybrid_version=1, @hybrid_saved=true, @hybrid_size=47, @content="First Post!", @hybrid_id="767", @author="Playa1">]
+
+We appended the comment to the collection, this will extended the object to be hybrid savable if required, and saved it along with indexed links in the hybrid_relations table
+Lets add another
+
+	irb> comment2 = BlogComment.new
+	=> #<BlogComment:0xb7b21134>
+	irb> comment2.author="Troll-ey"
+	=> "Troll-ey"
+	irb> comment2.content = "I hatez Micro$oft, alt-os FTW!"
+	=> "I hatez Micro$oft, alt-os FTW!"
+	irb> b.comments << comment2
+	=> [#<BlogComment:0xb7b21134 @hybrid_version=1, @hybrid_saved=true, @hybrid_size=68, @content="I hatez Micro$oft, alt-os FTW!", @hybrid_id="768", @author="Troll-ey">]
+
+We can query the length. 
+Note: if the parent object has just been read, and the collection is not loaded, this will simply query the DB for the number of collection items.
+
+	irb> b.comments.length
+	=> 2
+	
+
+Pass a block with each.
+
+	irb> b.comments.each{|c| puts c.content}
+	First Post!
+	I hatez Micro$oft, alt-os FTW!
+	=> [#<BlogComment:0xb7b13b24 @hybrid_version=2, @hybrid_saved=true, @hybrid_size=47, @content="First Post!", @hybrid_id=767, @author="Playa1">, #<BlogComment:0xb7b13930 @hybrid_version=2, @hybrid_saved=true, @hybrid_size=68, @content="I hatez Micro$oft, alt-os FTW!", @hybrid_id=768, @author="Troll-ey">]
+
+The collection can be accessed like an array
+		
+	irb> b.comments.first
+	=> #<BlogComment:0xb7b13b24 @hybrid_version=2, @hybrid_saved=true, @hybrid_size=47, @content="First Post!", @hybrid_id=767, @author="Playa1">
+	irb> b.comments[1]
+	=> #<BlogComment:0xb7b13930 @hybrid_version=2, @hybrid_saved=true, @hybrid_size=68, @content="I hatez Micro$oft, alt-os FTW!", @hybrid_id=768, @author="Troll-ey">
+
+The appended items are hybrid objects in their own right
+
+
+	irb> b.comments[1].hybrid_id
+	=> 768
+	irb> BlogComment.find(768)
+	=> #<BlogComment:0xb7b09a5c @hybrid_version=2, @hybrid_saved=true, @hybrid_size=68, @content="I hatez Micro$oft, alt-os FTW!", @hybrid_id=768, @author="Troll-ey">
+	irb> BlogComment.find(:all)
+	=> [#<BlogComment:0xb7b073c4 @hybrid_version=2, @hybrid_saved=true, @hybrid_size=47, @content="First Post!", @hybrid_id=767, @author="Playa1">, #<BlogComment:0xb7b071d0 @hybrid_version=2, @hybrid_saved=true, @hybrid_size=68, @content="I hatez Micro$oft, alt-os FTW!", @hybrid_id=768, @author="Troll-ey">]
+
+For more info see the <Collections article>
+	
+
