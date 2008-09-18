@@ -1,0 +1,99 @@
+	
+	TODO
+	----------	
+	Transactions around save calls
+	How to fail on duplicate index??????
+	Eager Loading
+	Update Updated_at in db on save/create
+	Better error message when accessing collection of unsaved object
+	MD5 Checksum on data to establish if it has changed
+		Using old copy would take too much memory
+	Ensure that objects have the same object_id, ie that a user object loaded twice is the same ruby object
+		We may need to store a key of loaded objects, so that we dont load again
+		We may need to Stub ALL hybrid objects then
+			Or can we detect at the find stage, that an object is already loaded
+		How then do we reload
+	Class level switch that objects are 'live'
+		-when on we do a check prior to each access
+		-may need to stub all items
+	Do a large scale dataset test
+		-benchmarks with tests
+	Define an each class method that will invoke a block against each object and dump it
+		Useful for millions of objects
+		Just use find with block?
+	Add time taken to query for each find
+	Allow ignore of some ivars
+	HybridWeb Adapter
+		Web service that accepts and feeds ruby objects
+		Camping App?
+	Example of using mysql as a message queue - or agent
+		Use Tasks as an example object as it will have functionality built in
+	Don't save nil ivars
+	How do we clean up for example misspelled class - Can we have the Hybrid object do an Object report
+	PostreSQL adapter
+
+	Docs - Thanks
+		EigenClass for CG info Mauricio Fernandez
+		_Why for metaprogramming stuff
+		check delicious links for other inspiration
+		
+
+	Questions?
+	---------------
+	Store Class definitions in db?
+	Use of changes file? Can something be added server side that processes these diffs?
+		-don't do, use checksum instead
+	Manage the cleaning of no longer needed ivars, ie after design change
+	Gem?
+	What do we do with deleted linked objects - error?
+	could we use this to maintain app state al la seaside
+
+	ROADMAP
+	-------
+	
+	auto_update - check version before major ops
+		
+	DONE
+	----
+	Whats the point in having extend methods? 
+		Will we ever want to persist a vanilla object, given that it cannot be read back directly?
+		Or will this be useful for storing all non-native classes in the db
+		-solved - it will be used for storing non hybrid objects in collections
+	Delete method that clears the data from the db and sets the object back to an unsaved version of itself that can be thrown away
+		- may need to set to nil
+		- may need a hybrid_nil class
+	Clear_all should delete relationships as well
+	Autocreate tables on startup if not there
+		-dont overwrite
+	Use has_many to avoid rewriting large arrays when simply adding an object to a collection
+	Dont save ivars that are HybridCollections
+	complex objects - test use ranges etc
+	indexes - get it to update indexes for indexed values
+	Check if object saved in to_yaml_properties, if so just save stub, else save unsaved object
+	When YAMLising a hybrid object store a HybridStub
+		this will have a method missing, which checks if has been initialised, and replaces itself
+		with a hybrid object
+		
+	How to use Rake? Do we auto create tables for classes? - not needed, only 3 tables, creation is handled by the 
+	stubs - stub included hybrid objects as uninitialised, they need loaded
+	
+	
+	HybridObjectManager
+		2 stage Find
+			- get all ids that match
+			- ones that are in manager are not requested, we use id list to get th rest in a single query
+		h.save 
+			adds it to the list
+		h.find
+			gets from the db, 
+				if on list sets list item to new version so other loaded versions are updated
+				otherwise saves ref to iteslf to list
+
+		How do we manage items getting GC'd
+			ObjectSpace define_finaliser, add it on save and creation after find
+	
+	Transactions
+		Thread level flag using current state objectid in hash of global var?
+		This stores whether we are in a transaction, if so we need to log id's assigned etc for roll back
+			e.g. if we create placeholders for objects and assign them id's, we need to reset the ids when failing an obverall transaction
+		
