@@ -1,4 +1,4 @@
-#--
+#<
 # Copyright (c) 2008 Paul McConnon
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -18,7 +18,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#++
+#>
+
+
+
 	require 'rubygems'
 	require 'yaml'
 	
@@ -44,9 +47,7 @@
 			true
 		end
 		def save_placeholder
-			#TODO this should return the actual int id
-			res = Connection.insert_and_return_id(my_class_name, '').first
-			@hybrid_id = res['new_id'].to_i
+			@hybrid_id = Connection.insert_and_return_id(my_class_name, '')
 			@hybrid_version = 0
 			#place into manager
 			HybridObjectManager.add_object(self)
@@ -55,16 +56,15 @@
 		def save_contents
 			data = marshalled_ivars
 			@hybrid_size = data.length
-			#TODO use connection adapters update and insert
-			sql = "update hybrid_objects set data = '#{escape(data)}', version = version + 1, size = #{@hybrid_size} where class_name = '#{my_class_name}' and id = #{@hybrid_id}"
-			Connection.execute sql
+			Connection.update_data(my_class_name, @hybrid_id, data, @hybrid_size)
+			#sql = "update hybrid_objects set data = '#{escape(data)}', version = version + 1, size = #{@hybrid_size} where class_name = '#{my_class_name}' and id = #{@hybrid_id}"
+			#Connection.execute sql
 			@hybrid_version += 1
 			recreate_indexes
 			@hybrid_saved = true
 		end
 		def delete
 			Connection.delete_object(my_class_name, @hybrid_id)
-			#remove from manager
 			HybridObjectManager.clear_up_finaliser.call(self.object_id)
 			@hybrid_id = nil
 			@hybrid_saved = false
@@ -73,7 +73,6 @@
 		end
 		def marshalled_ivars
 			h = {}
-			#puts "marshalling inst vars #{self.instance_variables.inspect}"
 			self.instance_variables.each do |ivar|
 				unless IGNORE_IVARS.include?(ivar)
 					val = self.instance_variable_get(ivar)
@@ -84,14 +83,13 @@
 		end
 		
 		def recreate_indexes
-			#check in case we extended an object and its class doesn't support the hybrid_indexes property
-			# TODO fail on no indexed items?
+			# check in case we extended an object and its class doesn't support the hybrid_indexes property
 			if self.class.respond_to? :hybrid_indexes 
 				indexed_items = self.class.hybrid_indexes
 			else
 				indexed_items = []
 			end
-			
+		
 			if indexed_items.length > 0 
 				Connection.execute("delete from hybrid_indexes where class_name = '#{my_class_name}' and id = #{@hybrid_id}")
 				self.instance_variables.each do |ivar|
@@ -127,10 +125,6 @@
 		####################################################
 		#	 Helpers
 	
-		def escape(string)
-			#TODO use connection adapters escaping functions?
-			string.gsub("'","''")
-		end
 	
 		def my_class_name
 			self.class.to_s
@@ -224,6 +218,9 @@
 			end
 			def self.delete_object(class_name, id)
 				@@adapter.delete_object(class_name, id)
+			end
+			def self.update_data(klass, hybrid_id, data, size)
+				@@adapter.update_data klass, hybrid_id, data, size
 			end
 		end
 	end #module hybrid_db

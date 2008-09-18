@@ -50,7 +50,7 @@
 			res = get_data("SELECT LAST_INSERT_ID() as new_id;")
 			@dbh.commit
 			@dbh.autocommit(true)
-			res
+			res.first['new_id'].to_i
 		end
 		
 		def delete_object(class_name, id)
@@ -61,7 +61,14 @@
 			execute "delete from hybrid_references where (class_name = '#{class_name}' and class_id = #{id}) or  (reference_class = '#{class_name}' and reference_id = #{id});"
 		end
 		
-		def create_tables
-			raise "Not implemented"
- 		end
+		def update_data(klass, hybrid_id, data, size)
+			sql = "update hybrid_objects set data = '#{escape(data)}', version = version + 1, size = #{size} where class_name = '#{klass}' and id = #{hybrid_id}"
+			execute sql
+		end
+		
+		def escape(string)
+			#TODO use connection adapters escaping functions?
+			string.gsub("'","''")
+		end
+		
 	end
