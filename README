@@ -1,99 +1,91 @@
-	
-	TODO
-	----------	
-	Transactions around save calls
-	How to fail on duplicate index??????
-	Eager Loading
-	Update Updated_at in db on save/create
-	Better error message when accessing collection of unsaved object
-	MD5 Checksum on data to establish if it has changed
-		Using old copy would take too much memory
-	Ensure that objects have the same object_id, ie that a user object loaded twice is the same ruby object
-		We may need to store a key of loaded objects, so that we dont load again
-		We may need to Stub ALL hybrid objects then
-			Or can we detect at the find stage, that an object is already loaded
-		How then do we reload
-	Class level switch that objects are 'live'
-		-when on we do a check prior to each access
-		-may need to stub all items
-	Do a large scale dataset test
-		-benchmarks with tests
-	Define an each class method that will invoke a block against each object and dump it
-		Useful for millions of objects
-		Just use find with block?
-	Add time taken to query for each find
-	Allow ignore of some ivars
-	HybridWeb Adapter
-		Web service that accepts and feeds ruby objects
-		Camping App?
-	Example of using mysql as a message queue - or agent
-		Use Tasks as an example object as it will have functionality built in
-	Don't save nil ivars
-	How do we clean up for example misspelled class - Can we have the Hybrid object do an Object report
-	PostreSQL adapter
+HybridDB is a prototype hybrid Relational / Object database for Ruby.
 
-	Docs - Thanks
-		EigenClass for CG info Mauricio Fernandez
-		_Why for metaprogramming stuff
-		check delicious links for other inspiration
-		
+It uses a relational database as the object store, but doesn’t need a database schema to work.
 
-	Questions?
-	---------------
-	Store Class definitions in db?
-	Use of changes file? Can something be added server side that processes these diffs?
-		-don't do, use checksum instead
-	Manage the cleaning of no longer needed ivars, ie after design change
-	Gem?
-	What do we do with deleted linked objects - error?
-	could we use this to maintain app state al la seaside
+While it uses an SQL server (initially MySQL) for data storage, no SQL is required to use it. You just create objects and tell them to ‘Save’, HybridDB takes care of storing them.
 
-	ROADMAP
-	-------
-	
-	auto_update - check version before major ops
-		
-	DONE
-	----
-	Whats the point in having extend methods? 
-		Will we ever want to persist a vanilla object, given that it cannot be read back directly?
-		Or will this be useful for storing all non-native classes in the db
-		-solved - it will be used for storing non hybrid objects in collections
-	Delete method that clears the data from the db and sets the object back to an unsaved version of itself that can be thrown away
-		- may need to set to nil
-		- may need a hybrid_nil class
-	Clear_all should delete relationships as well
-	Autocreate tables on startup if not there
-		-dont overwrite
-	Use has_many to avoid rewriting large arrays when simply adding an object to a collection
-	Dont save ivars that are HybridCollections
-	complex objects - test use ranges etc
-	indexes - get it to update indexes for indexed values
-	Check if object saved in to_yaml_properties, if so just save stub, else save unsaved object
-	When YAMLising a hybrid object store a HybridStub
-		this will have a method missing, which checks if has been initialised, and replaces itself
-		with a hybrid object
-		
-	How to use Rake? Do we auto create tables for classes? - not needed, only 3 tables, creation is handled by the 
-	stubs - stub included hybrid objects as uninitialised, they need loaded
-	
-	
-	HybridObjectManager
-		2 stage Find
-			- get all ids that match
-			- ones that are in manager are not requested, we use id list to get th rest in a single query
-		h.save 
-			adds it to the list
-		h.find
-			gets from the db, 
-				if on list sets list item to new version so other loaded versions are updated
-				otherwise saves ref to iteslf to list
+It has the benefits of a SQL server like indexing, easy backup and restore along with the benefits of an object database like no need for a schema.
 
-		How do we manage items getting GC'd
-			ObjectSpace define_finaliser, add it on save and creation after find
-	
-	Transactions
-		Thread level flag using current state objectid in hash of global var?
-		This stores whether we are in a transaction, if so we need to log id's assigned etc for roll back
-			e.g. if we create placeholders for objects and assign them id's, we need to reset the ids when failing an obverall transaction
-		
+It works by storing all instance variable for your objects to the database and recording indexing and relational info for them if required.
+
+When you need the object again, it is recreated, and it’s instance variables are restored to the condition they were in when the object was saved.
+
+Objects can be found using simple activerecord like syntax e.g MyObject.find(12345) or MyObject.find(:first, :conditions = {:name => ‘Paul’})
+
+To make your ordinary Ruby objects savable using HybridDB simply inherit from HybridObject (or a descendant of HybridObject)
+
+Note: Objects added to collections do not need to be Hybrid Objects, they will be extended if required.
+Example
+
+We declare the following classes. We DO NOT create any tables in the database.
+
+	class BlogPost < HybridObject 
+		indexes :title 
+		has_many :comments
+		attr_accessor :title, :content, :pingbacks
+		def initialize
+		    @pingbacks =[]
+		end
+	end
+	class BlogComment < HybridObject
+		indexes :author
+		attr_accessor :author, :content
+	end
+	class PingBack
+		#not a hybrid object
+		attr_accessor :address, :ping_time
+	end
+
+	b=BlogPost.new
+	b.title = "Post One" 
+	b.content = "Blah blah blah" 
+	pb = PingBack.new
+	pb.address="www.blogger.com" 
+	pb.ping_time = Time.now
+	p.pingbacks << pb   
+	b.save
+	comment1 = BlogComment.new
+	comment1.author="Playa1" 
+	comment1.content = "First Post!" 
+	b.comments << comment1
+
+We have saved a blog post, added a pingback and appended a comment to it’s comments collection. We can now do:
+
+	post = BlogPost.find(:first, :conditions => {:title => 'Post One'})
+	post.content
+	=> "Blah blah blah" 
+	post.pingbacks
+	=> [#]
+
+Note : The PingBack, while saved, cannot be accessed on it’s own via find, as it is not a hybrid object.
+
+	post.comments.first.content
+	=> "First Post!"
+
+Or find the comment on it’s own.
+
+	Comment.find(:first, :conditions => {:author => "Playa1"}).content
+	=> "First Post!"
+
+No SQL, no schema, just add classes that inherit from HybridObject and you’re good to go!
+
+See the Getting Started tutorial for more in-depth examples.
+Database Structure
+
+The HybridDB database structure is created for you if it is not present, and consists of only 3 tables.
+
+hybrid_objects
+
+This table stores the actual data for your object, along with a unique id, your objects class name, it’s size, version and when it was last updated.
+
+hybrid_indexes
+
+This table contains indexes for indexed properties of your objects, along with a arefernce to the acual object indexed.
+
+hybrid_references
+
+This table manages collections of hybrid objects within other hybrid objects. It allows us to append new objects to a collection in our object without having to resave the parent object.
+
+I note these for reference only, you never access them directly.
+
+Note : HybridDb is a very early prototype and is not recommended for using in critical applications. I’ve released it so that I can get feedback on what works and what doesn’t.
