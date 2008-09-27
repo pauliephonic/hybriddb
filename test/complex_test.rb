@@ -37,7 +37,9 @@ class ComplexTest < Test::Unit::TestCase
 		assert_equal complex.added_at , added_at
 		assert_equal complex.config , config
 	end
-	
+	def test_delete_contained_object
+		assert false, "Need to test behaviour of an object with a reference to a deleted object"
+	end
 end
 
 

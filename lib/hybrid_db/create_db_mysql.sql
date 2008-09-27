@@ -15,12 +15,12 @@ CREATE TABLE IF NOT EXISTS `hybrid_indexes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE  IF NOT EXISTS `hybrid_objects` (
-  `id` int(11) NOT NULL auto_increment,
+  `id` int(11) NOT NULL,
+  `class_name` varchar(255) NOT NULL,
   `version` int(11) NOT NULL default '0',
   `data` text,
   `changes` text,
   `updated_at` datetime default NULL,
-  `class_name` varchar(255) NOT NULL,
   `size` int(11) NOT NULL default '0',
   PRIMARY KEY  (`id`),
   KEY `class_name` (`class_name`)
@@ -37,6 +37,18 @@ CREATE TABLE  IF NOT EXISTS  `hybrid_references` (
   KEY `class_index` (`class_name`,`class_id`),
   KEY `ref_index` (`reference_class`,`reference_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `hybrid_ids` (
+  `next_id` int(11) NOT NULL auto_increment,
+  PRIMARY KEY  (`next_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+START TRANSACTION;
+  INSERT INTO hybrid_ids(next_id) values(0);
+  SET @c = NULL;
+  Select @c:=max(next_id) from hybrid_ids;
+  delete from hybrid_ids where next_id != @c;
+COMMIT;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
