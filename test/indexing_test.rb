@@ -35,5 +35,6 @@ class IndexingTest < Test::Unit::TestCase
 	
 	def test_find_on_unindexed
 		#should raise an error
+		assert false
 	end
 end

@@ -245,6 +245,9 @@
 			def self.create_statement(hybrid_id, class_name, data)
 				@@adapter.create_statement(hybrid_id, class_name, data)
 			end
+			def self.each_row(sql,&blk)
+				@@adapter.each_row(sql,&blk)
+			end
 		end
 		
 	end #module hybrid_db
