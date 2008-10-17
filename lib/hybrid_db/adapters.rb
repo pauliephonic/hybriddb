@@ -19,18 +19,20 @@
 				puts "Error code: #{e.errno}"
 				puts "Error message: #{e.error}"
 				puts "Error SQLSTATE: #{e.sqlstate}" if e.respond_to?("sqlstate")
+				false
 			end
 		end
+		
 		def create_tables_if_required
 			statements = File.read(File.join(File.dirname(__FILE__),"/create_db_mysql.sql")).split(';').map{|s| s + ';'}.reject{|s| s.length < 3}
 			execute_multiple_statements(statements)#.each{|sql| execute sql}
 		end
+		
 		def disconnect
 			@dbh.close
 			@connected = false
 		end		
 		def execute(sql)
-			#@dbh.query_with_result = false
 			@dbh.query sql
 		end
 		def get_data(sql)
@@ -83,7 +85,7 @@
 		
 		def update_data(klass, hybrid_id, data, size)
 			execute update_statement(klass, hybrid_id, data, size)
-		end
+		end 
 		
 		def update_statement(klass, hybrid_id, data, size)
 			"update hybrid_objects set data = '#{escape(data)}', version = version + 1, size = #{size}, updated_at = now() where class_name = '#{klass}' and id = #{hybrid_id}"

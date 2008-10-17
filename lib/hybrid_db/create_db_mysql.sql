@@ -18,7 +18,7 @@ CREATE TABLE  IF NOT EXISTS `hybrid_objects` (
   `id` int(11) NOT NULL,
   `class_name` varchar(255) NOT NULL,
   `version` int(11) NOT NULL default '0',
-  `data` text,
+  `data` mediumtext,
   `changes` text,
   `updated_at` datetime default NULL,
   `size` int(11) NOT NULL default '0',
@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS `hybrid_ids` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 START TRANSACTION;
+  DELETE FROM hybrid_ids where next_id = 0;
   INSERT INTO hybrid_ids(next_id) values(0);
   SET @c = NULL;
   Select @c:=max(next_id) from hybrid_ids;

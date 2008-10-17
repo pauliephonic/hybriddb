@@ -252,6 +252,7 @@
 		
 	end #module hybrid_db
 	
+
 	require 'hybrid_db/blank_object'
 	require 'hybrid_db/hybrid_save_manager'
 	require 'hybrid_db/hybrid_stub'

@@ -107,5 +107,9 @@ class CollectionTest < Test::Unit::TestCase
 		new_child = Child.find(cid)
 		assert_equal new_child.name, "appendsave_#{@num}",'should be able to retrieve an object appended to a hybrid collection'
 	end
+	
+	def test_remove_from_collection
+		assert false, "Need to add a collection removal method D'oh!"
+	end
 end
 	
