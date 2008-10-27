@@ -40,6 +40,9 @@
 				records[0]['length'].to_i
 			end
 		end
+		def empty?
+			collection.empty?
+		end
 		def <<(objects)
 			Array(objects).each{|object|
 				object.extend HybridDB unless object.respond_to? :hybrid_id #extend if not a hybrid
