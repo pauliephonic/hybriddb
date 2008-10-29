@@ -59,6 +59,7 @@ class CollectionTest < Test::Unit::TestCase
 		assert_equal @r.children.length, 1
 		
 		assert_equal @r.children.first.name, 'test'
+		assert_nothing_raised @r.children.first.hybrid_id
 	end
 	
 	def test_retrieval
@@ -109,7 +110,31 @@ class CollectionTest < Test::Unit::TestCase
 	end
 	
 	def test_remove_from_collection
-		assert false, "Need to add a collection removal method D'oh!"
+		c = Child.new
+		c.name = "collection_remove_#{@num}"
+		@r.children << c
+		
+		c2 = Child.new
+		c2.name = "collection_remove_#{@num + 1}"
+		@r.children << c2
+		
+		cid = c.hybrid_id
+		c2id= c2.hybrid_id
+		
+		#we should have 2 children
+		rel = Relationship.find(:first)
+		assert rel.children.include?(c), "Item should include added objects"
+		assert rel.children.include?(c2), "Item should include added objects"
+		
+		rel.children.remove(c)
+		assert !rel.children.include?(c), "Item should not include removed added object"
+		rel.children.remove(c2)
+		assert !rel.children.include?(c2), "Item should not include removed added object"
+		assert rel.children.empty?, "Collection should be empty after deleting all items"
+	end
+	
+	def test_can_retrieve_vanilla_object
+		assert false
 	end
 end
 	

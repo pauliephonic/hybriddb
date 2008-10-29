@@ -123,4 +123,7 @@
         assert_equal child.name, "Child_#{num}"
         
       end
+      def test_hybrid_property_access_does_not_load_from_db
+      	assert false, "Add a test to ensure simple access of hybrid0id etc. doesnt load the object from the db"
+      end
   end

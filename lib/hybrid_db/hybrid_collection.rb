@@ -56,6 +56,11 @@
 				@collection << object if @collection
 			}
 		end
+		def remove(object)
+			#remove the object from this collection, does not delete it
+			HybridDB::Connection.execute "delete from hybrid_references where class_name= '#{@owner_class}' and class_id = #{@owner_id} and property = '#{@property}' and reference_class= '#{object.class.name}' and reference_id= #{object.hybrid_id};"			
+			@collection.delete(object) if @collection
+		end
 		def first
 			collection.first
 		end

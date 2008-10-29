@@ -15,6 +15,8 @@ module HybridUtilities
 			new_item.instance_variables.each{|ivar| new_item.instance_variable_set(ivar, nil) unless HybridDB::IGNORE_IVARS.include? ivar}
 		else
 			new_item  = Object::const_get(record['class_name']).new
+			#extend if not a hybrid object
+			new_item.extend HybridDB unless new_item.respond_to? :hybrid_id #extend if not a hybrid
 			new_item.instance_variable_set("@hybrid_id", record['id'].to_i) #set hybrid_id so hybrid_object_manager knows how to index
 			HybridObjectManager.add_object(new_item) unless dispose_immediately #don't save to objectmanager if not required
 		end
